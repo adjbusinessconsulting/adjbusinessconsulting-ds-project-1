@@ -22,7 +22,7 @@ def load_data():
 # load data retail 
 df_sales = load_data()
 df_sales.columns = df_sales.columns.str.lower().str.replace(' ', '_')
-df_sales['tanggal_pesanan'] = pd.to_datetime(df_sales['tanggal_pesanan']) 
+df_sales['invoicedate'] = pd.to_datetime(df_sales['invoicedate'])
 
 # sidebar 
 st.sidebar.header("Pengaturan & Navigasi")
