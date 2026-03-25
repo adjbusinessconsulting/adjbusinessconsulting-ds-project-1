@@ -129,7 +129,7 @@ with st.sidebar:
         DS Project 1 · Dibimbing.id DS39+<br>
         UCI Online Retail · 805,549 rows<br><br>
         <a href='https://adjbusinessconsulting.github.io/adj-consulting/portfolio.html'
-           style='color:#93C5FD;'>← Back to Portfolio</a>
+           target='_blank' style='color:#93C5FD;'>← Back to Portfolio</a>
     </div>
     """, unsafe_allow_html=True)
 
@@ -678,6 +678,7 @@ elif section == "💡 7. Business Recommendations":
         </div>
         <div style="margin-top:1.5rem;">
             <a href="https://adjbusinessconsulting.github.io/adj-consulting/portfolio.html"
+               target="_blank"
                style="background:#3B82F6;color:white;padding:12px 28px;border-radius:6px;
                       text-decoration:none;font-family:monospace;font-size:13px;font-weight:600;">
                 ← Back to Portfolio
