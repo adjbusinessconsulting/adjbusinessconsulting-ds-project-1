@@ -16,7 +16,7 @@ st.set_page_config(
 # fungsi untuk load dataset
 @st.cache_data
 def load_data():
-    return pd.read_csv("data/data_dummy_retail_store.csv")
+    return pd.read_parquet("online_retail_cleaned.parquet")
 
 
 # load data retail 
