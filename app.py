@@ -677,7 +677,7 @@ elif section == "💡 7. Business Recommendations":
             Reactivate dormant buyers
         </div>
         <div style="margin-top:1.5rem;">
-            <a href="https://adjbusinessconsulting.github.io/adj-consulting/portfolio.html"
+            <a href="https://adjbusinessconsulting.github.io/adj-businessconsulting-website/portfolio.html"
                target="_blank"
                style="background:#3B82F6;color:white;padding:12px 28px;border-radius:6px;
                       text-decoration:none;font-family:monospace;font-size:13px;font-weight:600;">
