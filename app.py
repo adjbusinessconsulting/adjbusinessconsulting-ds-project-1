@@ -1,165 +1,187 @@
 import streamlit as st
-import pandas as pd
-import numpy as np
+import pandas as pd 
+import numpy as np 
+import pickle
 import plotly.express as px
 import plotly.graph_objects as go
-from sklearn.preprocessing import StandardScaler
-from sklearn.cluster import KMeans
-from sklearn.decomposition import PCA
+from datetime import datetime, timedelta
 
 st.set_page_config(
-    page_title="Customer Clustering — DS Project 1",
-    page_icon="🔵",
-    layout="wide"
+    page_title="Portofolio Kim Sejeong",
+    page_icon="👩‍💻",
+    layout="wide",
+    initial_sidebar_state="expanded"
 )
 
-st.markdown("""
-<style>
-    .main { background-color: #0D1B2E; }
-    .stApp { background-color: #0D1B2E; color: white; }
-    h1, h2, h3 { color: white; }
-    .metric-card {
-        background: #162440;
-        border-radius: 8px;
-        padding: 1rem 1.5rem;
-        border: 1px solid #1E3A5F;
-    }
-    .cluster-0 { background: #1a3a5c; border-left: 4px solid #60A5FA; }
-    .cluster-1 { background: #1a3a2a; border-left: 4px solid #34D399; }
-    .cluster-2 { background: #3a2a1a; border-left: 4px solid #FBBF24; }
-    .cluster-3 { background: #3a1a1a; border-left: 4px solid #F87171; }
-</style>
-""", unsafe_allow_html=True)
-
+# fungsi untuk load dataset
 @st.cache_data
-def load_and_cluster():
-    df = pd.read_parquet("online_retail_cleaned.parquet")
-    df['invoicedate'] = pd.to_datetime(df['invoicedate'])
-    df = df[df['customer_id'].notna()]
-    df = df[(df['price'] > 0) & (df['quantity'] > 0)]
-    df['customer_id'] = df['customer_id'].astype(str).replace('nan', np.nan)
-    df = df.dropna(subset=['customer_id'])
+def load_data():
+    return pd.read_csv("data/data_dummy_retail_store.csv")
 
-    snapshot_date = df['invoicedate'].max() + pd.Timedelta(days=1)
-    rfm = df.groupby('customer_id').agg(
-        Recency=('invoicedate', lambda x: (snapshot_date - x.max()).days),
-        Frequency=('invoice', 'nunique'),
-        Monetary=('total_price', 'sum'),
-        Total_Quantity=('quantity', 'sum')
-    ).reset_index()
-    rfm['AOV'] = rfm['Monetary'] / rfm['Frequency']
-    rfm['Avg_Quantity_per_Invoice'] = rfm['Total_Quantity'] / rfm['Frequency']
 
-    cols = ['Recency', 'Frequency', 'Monetary', 'AOV', 'Avg_Quantity_per_Invoice']
-    log_df = rfm.copy()
-    log_df[cols] = np.log1p(log_df[cols])
-    scaler = StandardScaler()
-    scaled = scaler.fit_transform(log_df[cols])
-    kmeans = KMeans(n_clusters=4, random_state=42, n_init=10)
-    rfm['Cluster'] = kmeans.fit_predict(scaled)
+# load data retail 
+df_sales = load_data()
+df_sales.columns = df_sales.columns.str.lower().str.replace(' ', '_')
+df_sales['tanggal_pesanan'] = pd.to_datetime(df_sales['tanggal_pesanan']) 
 
-    cluster_names = {0: 'Seasonal Buyers', 1: 'MVP Customers', 2: 'Mid Value Customers', 3: 'Low Value Customers'}
-    rfm['Cluster_Name'] = rfm['Cluster'].map(cluster_names)
+# sidebar 
+st.sidebar.header("Pengaturan & Navigasi")
 
-    pca = PCA(n_components=2)
-    pca_result = pca.fit_transform(scaled)
-    rfm['PC1'] = pca_result[:, 0]
-    rfm['PC2'] = pca_result[:, 1]
+pilihan_halaman = st.sidebar.radio(
+    "Pilih Halaman:",
+    ("Profil", "Dashboard Penjualan", "Prediksi Penjualan")
+)
 
-    return rfm
+if pilihan_halaman == "Profil":
+    st.title("Tentang Saya")
+    st.markdown("*Siapa Kim Sejeong?*")
 
-st.title("🔵 Customer Clustering with K-Means ML")
-st.markdown("**DS Project 1 — ADJ Business Consulting** · UCI Online Retail Dataset · 805,549 rows → 5,878 customers")
-st.markdown("---")
+    st.write("Halo! Saya adalah **Kim Sejong**. Aspirasi saya menjadi *data analyst & scientist*.")
+    st.image("assets/Kim_Se-Jeong-Gugudan-p1.jpeg", width=200, caption="Saya yang cantik rupawan")
 
-with st.spinner("Running K-Means clustering on your data..."):
-    rfm = load_and_cluster()
+    st.header("Skills:")
+    st.markdown("""
+        * Pemrograman
+            * Python 
+            * PostgreSQL
+            * MySQL
+        * Softskills
+            * Problem Solving
+            * Critical Thinking
+    """)
 
-cluster_colors = {
-    'Seasonal Buyers': '#60A5FA',
-    'MVP Customers': '#34D399',
-    'Mid Value Customers': '#FBBF24',
-    'Low Value Customers': '#F87171'
-}
+    st.write("Butuh saya untuk jadi DA/DS? Kontak saya di kimsejeong@gmail.com")
 
-# ── METRICS ROW ──
-col1, col2, col3, col4 = st.columns(4)
-for col, cluster_id, name, color in zip(
-    [col1, col2, col3, col4],
-    [0, 1, 2, 3],
-    ['Seasonal Buyers', 'MVP Customers', 'Mid Value Customers', 'Low Value Customers'],
-    ['#60A5FA', '#34D399', '#FBBF24', '#F87171']
-):
-    subset = rfm[rfm['Cluster'] == cluster_id]
-    pct = len(subset) / len(rfm) * 100
-    monetary = subset['Monetary'].median()
-    col.metric(f"Cluster {cluster_id} — {name}", f"{pct:.1f}% ({len(subset):,})", f"Median spend: ${monetary:,.0f}")
+elif pilihan_halaman == "Dashboard Penjualan":
+    st.title("Dashboard Penjualan Toko Kim")
+    st.markdown("---")
 
-st.markdown("---")
+    st.sidebar.markdown("### Filter Data Dashboard")
 
-# ── PCA SCATTER ──
-col_left, col_right = st.columns([2, 1])
+    min_date = df_sales['tanggal_pesanan'].min().date()
+    max_date = df_sales["tanggal_pesanan"].max().date()
 
-with col_left:
-    st.subheader("Customer Clusters — PCA Visualization")
-    fig_pca = px.scatter(
-        rfm, x='PC1', y='PC2', color='Cluster_Name',
-        color_discrete_map=cluster_colors,
-        hover_data={'Recency': True, 'Frequency': True, 'Monetary': ':.0f', 'PC1': False, 'PC2': False},
-        opacity=0.6, height=450,
-        labels={'Cluster_Name': 'Cluster'}
+    # filter tanggal
+    date_range = st.sidebar.date_input(
+        "Pilih Rentang Tanggal:",
+        value=(min_date, max_date),
+        min_value=min_date,
+        max_value=max_date
     )
-    fig_pca.update_layout(
-        paper_bgcolor='#0D1B2E', plot_bgcolor='#0D1B2E',
-        font_color='white', legend_title_text='Cluster',
-    )
-    fig_pca.update_traces(marker=dict(size=5))
-    st.plotly_chart(fig_pca, use_container_width=True)
 
-with col_right:
-    st.subheader("Revenue Share by Cluster")
-    revenue = rfm.groupby('Cluster_Name')['Monetary'].sum().reset_index()
-    revenue['pct'] = revenue['Monetary'] / revenue['Monetary'].sum() * 100
-    fig_pie = px.pie(
-        revenue, values='Monetary', names='Cluster_Name',
-        color='Cluster_Name', color_discrete_map=cluster_colors,
-        height=450
-    )
-    fig_pie.update_layout(
-        paper_bgcolor='#0D1B2E', font_color='white',
-        legend_title_text='Cluster'
-    )
-    st.plotly_chart(fig_pie, use_container_width=True)
+    if len(date_range) == 2:
+        start_date_filter = pd.to_datetime(date_range[0])
+        end_date_filter = pd.to_datetime(date_range[1])
+        filtered_df = df_sales[(df_sales['tanggal_pesanan'] >= start_date_filter) &
+                               (df_sales['tanggal_pesanan'] <= end_date_filter)]
+    else: 
+        filtered_df = df_sales
 
-# ── RFM BOX PLOTS ──
-st.subheader("RFM Distribution by Cluster")
-tab1, tab2, tab3 = st.tabs(["Recency", "Frequency", "Monetary"])
-for tab, metric in zip([tab1, tab2, tab3], ['Recency', 'Frequency', 'Monetary']):
-    with tab:
-        fig = px.box(
-            rfm, x='Cluster_Name', y=metric, color='Cluster_Name',
-            color_discrete_map=cluster_colors, height=380
+
+    # filter wilayah
+    selected_regions = st.sidebar.multiselect(
+        "Pilih Wilayah:",
+        options=df_sales['wilayah'].unique().tolist(),
+        default=df_sales['wilayah'].unique().tolist()
+    )
+    filtered_df = filtered_df[filtered_df['wilayah'].isin(selected_regions)]
+
+    col1, col2, col3, col4 = st.columns([3, 2, 3, 2])
+
+    total_sales = filtered_df['total_penjualan'].sum()
+    total_orders = filtered_df['orderid'].nunique()
+    avg_order_value = total_sales / total_orders if total_orders > 0 else 0
+    total_products_sold = filtered_df['jumlah'].sum()
+
+    with col1:
+        st.metric(label="Total Penjualan", value=f"Rp {total_sales:,.2f}")
+    with col2:
+        st.metric(label="Jumlah Pesanan", value=f"{total_orders:,}")
+    with col3:
+        st.metric(label="Rata-rata Nilai Pesanan", value=f"Rp {avg_order_value:,.2f}")
+    with col4:
+        st.metric(label="Jumlah Produk Terjual", value=f"{total_products_sold:,}")
+
+    st.markdown("---")
+
+    # monthly sales (line chart)
+    st.subheader("Tren Penjualan Bulanan")
+    sales_by_month = filtered_df.groupby('bulan')['total_penjualan'].sum().reset_index()
+
+    sales_by_month['bulan'] = pd.to_datetime(sales_by_month['bulan']).dt.to_period('M')
+    sales_by_month = sales_by_month.sort_values('bulan') # memastikan urutan bulannya benar
+    sales_by_month['bulan'] = sales_by_month['bulan'].astype(str) # balikin untuk string untuk plotly
+
+    fig_monthly_sales = px.line(
+        sales_by_month,
+        x='bulan',
+        y='total_penjualan',
+        title='Monthly Sales'
+    )
+    st.plotly_chart(fig_monthly_sales, use_container_width=True)
+
+    st.subheader("Performa Penjualan Lebih Detail")
+    tab1, tab2 = st.tabs(["Metode Pembayaran", "Penjualan per Wilayah"])
+
+    with tab1:
+        st.write("#### Penjualan Berdasarkan Metode Pembayaran")
+
+        sales_by_payment = (
+            filtered_df.groupby('metode_pembayaran')['total_penjualan']
+            .sum()
+            .reset_index()
         )
-        fig.update_layout(
-            paper_bgcolor='#0D1B2E', plot_bgcolor='#0D1B2E',
-            font_color='white', showlegend=False
+
+        fig_payment = px.bar(
+            sales_by_payment,
+            x='metode_pembayaran',
+            y='total_penjualan',
+            title='Total Penjualan per Metode Pembayaran',
+            color='metode_pembayaran',
+            color_discrete_sequence=px.colors.qualitative.Vivid  # Skema warna cerah
         )
-        st.plotly_chart(fig, use_container_width=True)
 
-# ── CLUSTER PROFILES ──
-st.subheader("Cluster Profile Table")
-profile = rfm.groupby(['Cluster', 'Cluster_Name']).agg(
-    Customers=('customer_id', 'nunique'),
-    Recency_median=('Recency', 'median'),
-    Frequency_median=('Frequency', 'median'),
-    Monetary_median=('Monetary', 'median'),
-    Revenue_Total=('Monetary', 'sum'),
-).reset_index()
-profile['Revenue_%'] = (profile['Revenue_Total'] / profile['Revenue_Total'].sum() * 100).round(2)
-profile['Customer_%'] = (profile['Customers'] / profile['Customers'].sum() * 100).round(2)
-profile = profile[['Cluster', 'Cluster_Name', 'Customers', 'Customer_%', 'Recency_median', 'Frequency_median', 'Monetary_median', 'Revenue_%']]
-profile.columns = ['Cluster', 'Name', 'Customers', 'Customer %', 'Recency (days)', 'Frequency', 'Monetary ($)', 'Revenue %']
-st.dataframe(profile, use_container_width=True, hide_index=True)
+        st.plotly_chart(fig_payment, use_container_width=True)
+    
+    with tab2:
+        st.write("#### Penjualan Berdasarkan Wilayah")
+        sales_by_region = (
+            filtered_df.groupby('wilayah')['total_penjualan']
+            .sum()
+            .reset_index()
+        )
 
-st.markdown("---")
-st.markdown("**ADJ Business Consulting** · [Portfolio](https://adjbusinessconsulting.github.io/adj-consulting/portfolio.html)")
+        fig_region = px.bar(
+            sales_by_region,
+            x='wilayah',
+            y='total_penjualan',
+            title='Total Penjualan per Wilayah',
+            color='wilayah',
+            color_discrete_sequence=px.colors.qualitative.Safe  # Warna yang lebih lembut
+        )
+
+        st.plotly_chart(fig_region, use_container_width=True)
+
+    st.subheader("Eksplorasi Raw Data")
+
+    with st.expander("Klik untuk melihat data"):
+        st.write("Berikut adalah sebagian kecil dari data transaksi yang digunakan untuk dashboard ini.")
+
+        num_rows_to_display = st.slider(
+            "Jumlah baris yang ditampilkan",
+            min_value = 10,
+            max_value = 200,
+            value = 50, 
+            step = 10
+        )
+
+        st.dataframe(filtered_df.head(num_rows_to_display))
+
+        st.write("Statistik Deskriptif")
+        st.dataframe(filtered_df.describe())
+    
+
+
+        
+
+
